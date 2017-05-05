@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1,loop/0,parseExpr/1,tokenize/1,parse/1,format/1]).
+-export([start/2, stop/1,loop/0,parseExpr/1,splitByDots/1,parse/1,format/1]).
 -include_lib("eunit/include/eunit.hrl").
 
 
@@ -60,8 +60,8 @@ process() ->
               {error,BadJSON} ->
                   throw(BadJSON)
             end,
-            ExprList = tokenize(Content),
-            {ok,ParseList} = parse(ExprList),
+            TokExprList = tokenize(Content),
+            {ok,ParseList} = parse(TokExprList),
             FormatParse = format(ParseList),
             JSON = jsx:encode([{<<"status">>,<<"ok">>},{<<"ast">>,FormatParse}]),
             io:format("~s~n",[binary_to_list(JSON)])
@@ -79,10 +79,16 @@ decode(InputSrt) ->
           end;
       false->
           {error,{json,<<"Input is not a valid JSON">>}}
-      end.
+    end.
+
 tokenize(Content) ->
-    Formated= string:join(lists:map(fun erlang:binary_to_list/1,[Content]),""),
-    string:tokens(Formated,".").
+    TokExprList = case erl_scan:string(Content) of
+      {ok,Tokens,_} ->
+            splitByDots(Tokens);
+      {error,BadScan,_}-> throw({scan,BadScan})
+    end,
+    TokExprList.
+
 
 parse(ExprList) ->
     List = lists:foldl(fun (Expr,ParseList)->
@@ -112,6 +118,23 @@ parseExpr(Tokens) ->
                 {error,BadParse} -> {error,BadParse}
             end
     end.
+
+
+splitByDots(TokenList)->
+    splitByDots(TokenList,[],[]).
+
+splitByDots([H|T],Acc,Final)->
+    if
+      element(1,H) == dot ->
+        SubList = [lists:append(Acc,H)],
+        splitByDots(T,[],lists:append(Final,SubList));
+      true ->
+        splitByDots(T,lists:append(Acc,[H]),Final)
+    end;
+splitByDots([],_,Final)->
+  Final.
+
+
 
 %% Format do a conversion of erlang tuples to list, also change strings to binaries
 format(T) when is_list(T)->
