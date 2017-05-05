@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1,loop/0,parseExpr/1,splitByDots/1,parse/1,format/1]).
+-export([start/2, stop/1,loop/0,parseExpr/1,splitByDots/1,parse/1]).
 -include_lib("eunit/include/eunit.hrl").
 
 
@@ -60,7 +60,7 @@ process() ->
               {error,BadJSON} ->
                   throw(BadJSON)
             end,
-            TokExprList = tokenize(Content),
+            TokExprList = tokenize(binary_to_list(Content)),
             {ok,ParseList} = parse(TokExprList),
             FormatParse = format(ParseList),
             JSON = jsx:encode([{<<"status">>,<<"ok">>},{<<"ast">>,FormatParse}]),
@@ -68,7 +68,6 @@ process() ->
     end.
 
 decode(InputSrt) ->
-
     SubS = string:substr(InputSrt,1,string:len(InputSrt)-1),
     case jsx:is_json(list_to_binary(SubS)) of
       true->Data= jsx:decode(list_to_binary(SubS)),
@@ -92,20 +91,10 @@ tokenize(Content) ->
 
 parse(ExprList) ->
     List = lists:foldl(fun (Expr,ParseList)->
-        case string:equal("\n",Expr) of
-          true ->
-            lists:append(ParseList,"");
-          false ->
-            ExprDot = string:concat(Expr,"."),
-            case erl_scan:string(ExprDot) of
-              {ok,Tokens,_} ->
-                  case parseExpr(Tokens) of
-                    {ok,AST} -> lists:append(ParseList,AST);
-                    {error,BadParse} -> throw({parse,BadParse})
-                  end;
-              {error,BadScan,_}-> throw({scan,BadScan})
-            end
-        end
+      case parseExpr(Expr) of
+        {ok,AST} -> lists:append(ParseList,AST);
+        {error,BadParse} -> throw({parse,BadParse})
+      end
     end,[],ExprList),
     {ok,List}.
 
@@ -119,19 +108,19 @@ parseExpr(Tokens) ->
             end
     end.
 
-
 splitByDots(TokenList)->
     splitByDots(TokenList,[],[]).
 
 splitByDots([H|T],Acc,Final)->
     if
       element(1,H) == dot ->
-        SubList = [lists:append(Acc,H)],
+        SubList = [lists:append(Acc,[H])],
         splitByDots(T,[],lists:append(Final,SubList));
       true ->
         splitByDots(T,lists:append(Acc,[H]),Final)
     end;
 splitByDots([],_,Final)->
+  io:format("~p~n",[Final]),
   Final.
 
 
