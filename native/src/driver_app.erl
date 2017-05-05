@@ -11,7 +11,7 @@
 start(_StartType, _StartArgs) ->
     try
       %If you are modifying the code comment the next line to show the exceptions
-      %error_logger:tty(false),
+      error_logger:tty(false),
       loop()
     catch
       throw:{eofErr,_}->
@@ -88,7 +88,6 @@ tokenize(Content) ->
     end,
     TokExprList.
 
-
 parse(ExprList) ->
     List = lists:foldl(fun (Expr,ParseList)->
       case parseExpr(Expr) of
@@ -120,10 +119,7 @@ splitByDots([H|T],Acc,Final)->
         splitByDots(T,lists:append(Acc,[H]),Final)
     end;
 splitByDots([],_,Final)->
-  io:format("~p~n",[Final]),
   Final.
-
-
 
 %% Format do a conversion of erlang tuples to list, also change strings to binaries
 format(T) when is_list(T)->
