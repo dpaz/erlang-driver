@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1,loop/0,parseExpr/1,splitByDots/1,parse/1]).
+-export([start/2, stop/1,loop/0,splitByDots/1]).
 -include_lib("eunit/include/eunit.hrl").
 
 
@@ -118,8 +118,14 @@ splitByDots([H|T],Acc,Final)->
       true ->
         splitByDots(T,lists:append(Acc,[H]),Final)
     end;
-splitByDots([],_,Final)->
-  Final.
+splitByDots([],Acc,Final)->
+    if
+      length(Acc) == 0 ->
+        Res = Final;
+      true ->
+        Res =lists:append(Final,[Acc])
+    end,
+    Res.
 
 %% Format do a conversion of erlang tuples to list, also change strings to binaries
 format(T) when is_list(T)->
@@ -182,3 +188,21 @@ format_test_()->
    ?_assert(format({"hello","world"})=:= [<<"hello">>,<<"world">>]),
    ?_assert(format({a,b,[c,"hello",{"world",["this","is","a","test"]}]})=:= [a,b,[c,<<"hello">>,[<<"world">>,[<<"this">>,<<"is">>,<<"a">>,<<"test">>]]]]),
    ?_assert(format({"hello",<<"world">>})=:= [<<"hello">>,<<"world">>])].
+
+ splitByDots_test_()->
+   String1 = "ok . ok . ok . ok",
+   String2 = ". . . . ok",
+   String3 = "ok",
+   String4 = ".",
+   {_,Tokens1,_} = erl_scan:string(String1),
+   {_,Tokens2,_} = erl_scan:string(String2),
+   {_,Tokens3,_} = erl_scan:string(String3),
+   {_,Tokens4,_} = erl_scan:string(String4),
+   Res1 = length(splitByDots(Tokens1)),
+   Res2 = length(splitByDots(Tokens2)),
+   Res3 = length(splitByDots(Tokens3)),
+   Res4 = length(splitByDots(Tokens4)),
+   [?_assertEqual(4,Res1),
+   ?_assertEqual(5,Res2),
+   ?_assertEqual(1,Res3),
+   ?_assertEqual(1,Res4)].
