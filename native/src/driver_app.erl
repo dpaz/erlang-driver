@@ -83,7 +83,8 @@ decode(InputSrt) ->
 tokenize(Content) ->
     TokExprList = case erl_scan:string(Content) of
       {ok,Tokens,_} ->
-            splitByDots(Tokens);
+            PTokens = removeMacros(Tokens),
+            splitByDots(PTokens);
       {error,BadScan,_}-> throw({scan,BadScan})
     end,
     TokExprList.
@@ -147,6 +148,18 @@ format(T,N,Acc) when is_list(element(N,T)) ->
 format(T,N,Acc)->
     format(T,N-1,[element(N,T)|Acc]).
 
+removeMacros(Tokens) ->
+  removeMacros(Tokens,[]).
+
+removeMacros([H|T],Acc) ->
+  if
+    element(1,H) == '?' ->
+      removeMacros(T,Acc);
+    true ->
+      removeMacros(T,lists:append(Acc,[H]))
+  end;
+removeMacros([],Acc)->
+  Acc.
 
 
 %%Tests
